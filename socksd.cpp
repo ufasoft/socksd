@@ -118,8 +118,11 @@ public:
 	thread_group m_tg;
 	unordered_map<IPAddress, ptr<ListenerThread>> m_ipToListener;
 	AutoResetEvent m_evStop;
+	volatile bool m_bStopListen;
 
-	CSocksApp() {
+	CSocksApp()
+		:	m_bStopListen(false)
+ 	{
 		Port = 1080;
 	}
 
@@ -131,7 +134,7 @@ public:
 
 	void Execute() override	{
 		StartListen(IPAddress::Loopback);
-		while (!m_bStop) {
+		while (!m_bStopListen) {
 			vector<IPAddress> ips = IPAddrInfo().GetIPAddresses();
 			for (auto& ip : ips) {
 				if (!m_ipToListener.count(ip) && (ListenGlobalIP || !ip.IsGlobal()))
@@ -144,7 +147,7 @@ public:
 	}
 
 	bool OnSignal(int sig) override {
-		m_bStop = true;
+		m_bStopListen = true;
 		m_tg.interrupt_all();
 		m_evStop.Set();
 		CConApp::OnSignal(sig);

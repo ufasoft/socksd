@@ -84,7 +84,7 @@ protected:
 	IPEndPoint m_ep;
 
 	static void ConnectToProxy(Stream& stm);
-	bool ConnectHelper(const IPEndPoint& hp);
+	bool ConnectHelper(const IPEndPoint& hp) override;
 private:
 	IPEndPoint m_remoteHostPort;
 };
@@ -117,7 +117,7 @@ public:
 class CSocks5Proxy : public CProxyBase {
 public:
 	virtual IPEndPoint TcpBy(Stream& stm, const IPEndPoint& hp, byte cmd);
-	void Authenticate(Stream& stm);
+	void Authenticate(Stream& stm) override;
 	IPEndPoint Connect(Stream& stm, const CProxyQuery& q) override;
 };
 
