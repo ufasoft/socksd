@@ -149,7 +149,6 @@ public:
 
 	bool OnSignal(int sig) override {
 		m_bStopListen = true;
-		m_tg.interrupt_all();
 		m_evStop.Set();
 		CConApp::OnSignal(sig);
 		return true;
