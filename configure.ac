@@ -26,7 +26,7 @@ if test "x$CLANG" = "xyes"; then
 	CXXFLAGS="$CXXFLAGS -stdlib=libc++"
 fi
 
-AC_CHECK_LIB([ext], 	[],		, [AC_MSG_ERROR([Library libext not found, install it from https://github.com/ufasoft/libext])				])
+AC_CHECK_HEADER([el/libext.h], LDFLAGS="$LDFLAGS -lext",  [AC_MSG_ERROR([Library libext not found, install it from https://github.com/ufasoft/libext])])
 
 
 AC_OUTPUT(Makefile)
