@@ -134,7 +134,29 @@ public:
 		m_ipToListener.insert(make_pair(ip, new ListenerThread(m_tg, IPEndPoint(ip, Port)))).first->second->Start();
 	}
 
+ 	void PrintUsage() {
+		cout << "Usage: " << System.get_ExeFilePath().stem() << " {-p port}" << "\n";
+		cout << "  -p port       Listening port, by default 1080\n"
+			<< endl;
+	}
+
 	void Execute() override	{
+#if UCFG_USE_POSIX
+		signal(SIGHUP, SIG_IGN);
+		signal(SIGPIPE, SIG_IGN);
+#endif
+
+		for (int arg; (arg = getopt(Argc, Argv, "hp:")) != EOF;) {
+			switch (arg) {
+			case 'h':
+				PrintUsage();
+				return;
+			case 'p':
+				Port = uint16_t(atoi(optarg));
+				break;
+			}
+		}
+
 		StartListen(IPAddress::Loopback);
 		while (!m_bStopListen) {
 			vector<IPAddress> ips = IPAddrInfo().GetIPAddresses();
