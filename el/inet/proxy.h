@@ -1,13 +1,7 @@
 #pragma once
 
-#include <el/comp/resource.h>
-
 #include <el/libext/ext-net.h>
 #include <el/libext/ext-http.h>
-
-#if UCFG_GUI
-#	include <el/gui/controls.h>
-#endif
 
 
 //!!!#include "ProxyMsg.h"
