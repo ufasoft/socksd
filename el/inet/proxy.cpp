@@ -1,6 +1,8 @@
 #include <el/ext.h>
 
-#include <wtypes.h>
+#if UCFG_WIN32
+#	include <wtypes.h>
+#endif
 
 namespace Ext {
 #include <el/libext/win32/ext-afxdd_.h>
