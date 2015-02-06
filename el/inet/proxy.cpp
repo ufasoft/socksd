@@ -4,13 +4,6 @@
 #	include <wtypes.h>
 #endif
 
-namespace Ext {
-#include <el/libext/win32/ext-afxdd_.h>
-}
-
-#include <el/libext/win32/ext-win.h>
-
-
 #include "proxy.h"
 
 namespace Ext {
