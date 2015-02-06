@@ -1,7 +1,6 @@
 #include <el/ext.h>
 using namespace std;
 
-
 #include <el/inet/proxyrelay.h>
 using namespace Ext::Inet;
 
@@ -68,7 +67,7 @@ protected:
 class ListenerThread : public SocketThread {
 	typedef SocketThread base;
 public:
-	CProxySocket m_sockListen;
+	Socket m_sockListen;
 	SocketKeeper m_socketKeeper;
 	IPEndPoint m_ep;
 
