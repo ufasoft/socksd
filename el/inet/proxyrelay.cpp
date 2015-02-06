@@ -195,7 +195,7 @@ public:
 		line += "\r\n";
 
 		cmatch m;
-		if (!regex_search(line, m, s_reRequest))
+		if (!regex_search(line.c_str(), m, s_reRequest))
 			Throw(E_PROXY_InvalidHttpRequest);
 		String method = m[1];
 		method.MakeUpper();

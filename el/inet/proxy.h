@@ -31,8 +31,16 @@ struct CProxyQuery {
 	IPEndPoint Ep;
 };
 
-ostream& operator<<(ostream& os, const CProxyQuery& pq);
-
+inline ostream& operator<<(ostream& os, const CProxyQuery& pq) {
+	switch (pq.Typ) {
+	case QueryType::Connect:		os << "QueryType::Connect"; break;
+	case QueryType::Bind:			os << "QueryType::Bind"; break;
+	case QueryType::Udp:			os << "QueryType::Udp"; break;
+	case QueryType::Resolve:		os << "QueryType::Resolve"; break;
+	case QueryType::RevResolve:		os << "QueryType::RevResolve"; break;
+	}
+	return os << " " << pq.Ep;
+}
 
 #pragma pack(push,1)
 
@@ -43,18 +51,18 @@ struct CSocks5Header {
 };
 
 struct SSocks5ReplyHeader {
-	BYTE m_ver,
+	byte m_ver,
 		m_rep,
 		m_rsv,
 		m_atyp;
 };
 
 struct UDP_REPLY {
-	WORD m_rsv;
-	BYTE m_frag,
+	uint16_t m_rsv;
+	byte m_frag,
 		m_atype;
-	DWORD m_host;
-	WORD m_port;
+	uint32_t m_host;
+	uint16_t m_port;
 };
 
 #pragma pack(pop)
