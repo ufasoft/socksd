@@ -80,6 +80,7 @@ public:
 	}
 protected:
 	void BeforeStart() override {
+		m_sockListen.ReuseAddress = true;
 		m_sockListen.Bind(m_ep);
 		m_sockListen.Listen();
 	}
