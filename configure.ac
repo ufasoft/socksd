@@ -26,7 +26,13 @@ if test "x$CLANG" = "xyes"; then
 	CXXFLAGS="$CXXFLAGS -stdlib=libc++"
 fi
 
-AC_CHECK_HEADER([el/libext.h], LDFLAGS="$LDFLAGS -lext",  [AC_MSG_ERROR([Library libext not found, install it from https://github.com/ufasoft/libext])])
+AC_CHECK_LIB([pthread], [pthread_create],		, [AC_MSG_ERROR([Library not found])								])
+AC_CHECK_LIB(rt, clock_gettime,, AC_MSG_ERROR("Library librt not found"))
+AC_SEARCH_LIBS([dlopen], [dl dld], []			, [AC_MSG_ERROR([unable to find the dlopen() function])				])
+AC_SEARCH_LIBS([iconv],  [iconv], []			, [AC_MSG_ERROR([unable to find the iconv() function])				])
+
+
+AC_CHECK_LIB([ext], [AfxTestEHsStub],		, [AC_MSG_ERROR([Library libext not found, install it from https://github./com/ufasoft/libext])])
 
 
 AC_OUTPUT(Makefile)
@@ -45,6 +51,7 @@ echo "Compilation............: make (gmake on FreeBSD)"
 echo "  CPPFLAGS.............: $CPPFLAGS"
 echo "  CFLAGS...............: $CFLAGS"
 echo "  CXXFLAGS.............. $CXXFLAGS"
+echo "  LDFLAGS..............  $LDFLAGS"
 echo
 echo "Installation...........: make install (as root if needed, with 'su' or 'sudo')"
 echo "  prefix...............: $prefix"
