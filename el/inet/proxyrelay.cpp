@@ -3,6 +3,7 @@
 #include "proxy.h"
 #include "proxyrelay.h"
 
+
 namespace Ext {
 	namespace Inet {
 
@@ -181,7 +182,7 @@ protected:
 	CProxyQuery OnCommand(CSocks5Header& header, Stream& stm);
 };
 
-static wregex s_reRequest("^(\\w+)\\s+(?:http://)?([-.\\w]+)(?::(\\d+))?(.*)", regex_constants::icase);
+static regex s_reRequest("^(\\w+)\\s+(?:http://)?([-.\\w]+)(?::(\\d+))?(.*)", regex_constants::icase);
 
 class CHttpRelay : public CProxyRelay {
 	bool m_bConnect;
@@ -194,7 +195,7 @@ public:
 		ReadOneLineFromStream(stm,line);
 		line += "\r\n";
 
-		Smatch m;
+		cmatch m;
 		if (!regex_search(line, m, s_reRequest))
 			Throw(E_PROXY_InvalidHttpRequest);
 		String method = m[1];
