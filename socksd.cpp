@@ -144,6 +144,7 @@ public:
 		}
 		m_tg.interrupt_all();
 		m_tg.join_all();
+		m_tg.m_bSync = false;
 	}
 
 	bool OnSignal(int sig) override {
