@@ -58,6 +58,11 @@ protected:
 				return;
 			}
 			m_relay->SendReply(epResult);
+#if UCFG_USE_POSIX
+			int one = 1;
+			m_sockS.SetSocketOption(SOL_SOCKET, SO_NOSIGPIPE, ConstBuf(&one, sizeof one));
+			m_sockD.SetSocketOption(SOL_SOCKET, SO_NOSIGPIPE, ConstBuf(&one, sizeof one));
+#endif
 			Loop(m_sockS, m_sockD);
 		} catch (RCExc) {
 		}
