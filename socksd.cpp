@@ -116,6 +116,7 @@ class CSocksApp : public CConApp {
 	typedef CConApp base;
 public:
 	uint16_t Port;
+	IPAddress Ip;
 	CBool ListenGlobalIP;
 	thread_group m_tg;
 	unordered_map<IPAddress, ptr<ListenerThread>> m_ipToListener;
@@ -135,8 +136,9 @@ public:
 	}
 
  	void PrintUsage() {
-		cout << "Usage: " << System.get_ExeFilePath().stem() << " {-p port}" << "\n";
+		cout << "Usage: " << System.get_ExeFilePath().stem() << " {-l ip -p port}" << "\n";
 		cout << "  -p port       Listening port, by default 1080\n"
+			 << "  -l ip		Listening IP, by default non-global\n"
 			<< endl;
 	}
 
@@ -146,25 +148,32 @@ public:
 		signal(SIGPIPE, SIG_IGN);
 #endif
 
-		for (int arg; (arg = getopt(Argc, Argv, "hp:")) != EOF;) {
+		for (int arg; (arg = getopt(Argc, Argv, "hl:p:")) != EOF;) {
 			switch (arg) {
 			case 'h':
 				PrintUsage();
 				return;
+			case 'l':
+				Ip = IPAddress::Parse(optarg);
+				break;
 			case 'p':
 				Port = uint16_t(atoi(optarg));
 				break;
 			}
 		}
 
+		if (!Ip.IsEmpty())
+			StartListen(Ip);
 		StartListen(IPAddress::Loopback);
 		while (!m_bStopListen) {
-			vector<IPAddress> ips = IPAddrInfo().GetIPAddresses();
-			for (auto& ip : ips) {
-				if (!m_ipToListener.count(ip) && (ListenGlobalIP || !ip.IsGlobal()))
-					StartListen(ip);
-			}			
-			m_evStop.lock(5000);
+			if (Ip.IsEmpty()) {
+				vector<IPAddress> ips = IPAddrInfo().GetIPAddresses();
+				for (auto& ip : ips) {
+					if (!m_ipToListener.count(ip) && (ListenGlobalIP || !ip.IsGlobal()))
+						StartListen(ip);
+				}
+			}
+			m_evStop.lock(60000);
 		}
 		m_tg.interrupt_all();
 		m_tg.join_all();
