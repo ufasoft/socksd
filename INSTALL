@@ -1,0 +1,12 @@
+
+autoreconf && ./configure && make && make install
+
+modify systemd (init) scripts to call the daemon with listening IP/port:
+
+/usr/local/bin/socksd -l 192.168.0.1 -p 1080
+
+
+
+
+
+
