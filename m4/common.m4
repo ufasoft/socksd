@@ -43,8 +43,8 @@ fi
 AM_CONDITIONAL(HAVE_REGEX, [test "x$have_regex" = "xyes"])
 
 
-AC_CHECK_LIB([pthread], [pthread_create],		, [AC_MSG_ERROR([Library libpthread not found])					])
-AC_SEARCH_LIBS([iconv],  [iconv], []			, [AC_MSG_ERROR([Unable to find the iconv() function])			])
+AC_CHECK_LIB([pthread], [pthread_create],	[CXXFLAGS="$CXXFLAGS -pthread"]	, [AC_MSG_ERROR([Library libpthread not found])					])
+AC_SEARCH_LIBS([iconv],  [iconv], []										, [AC_MSG_ERROR([Unable to find the iconv() function])			])
 
 
 

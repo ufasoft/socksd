@@ -43,10 +43,7 @@ protected:
 			try {	
 
 				switch (target.Typ) {
-				case QueryType::Connect:
-					TRC(3, "Connect request to " << target);
-
-					m_sockD.Create(target.Ep.AddressFamily, SocketType::Stream, ProtocolType::Tcp);
+				case QueryType::Connect:					
 					m_sockD.Connect(target.Ep);
 					epResult = m_sockD.RemoteEndPoint;
 					break;
@@ -76,7 +73,7 @@ public:
 		: base(&tg)
 		, m_ep(ep)
 		, m_sockListen(ep.Address.AddressFamily, SocketType::Stream, ProtocolType::Tcp)
-		, m_socketKeeper(_self, m_sockListen, -1)
+		, m_socketKeeper(_self, m_sockListen)
 	{
 	}
 protected:
@@ -130,7 +127,7 @@ public:
 	}
 
 	void StartListen(const IPAddress& ip) {
-		TRC(1, "Listening on " << ip);
+		TRC(1, "Listening on " << IPEndPoint(ip, Port));
 
 		m_ipToListener.insert(make_pair(ip, new ListenerThread(m_tg, IPEndPoint(ip, Port)))).first->second->Start();
 	}

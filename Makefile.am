@@ -1,4 +1,3 @@
-
 bin_PROGRAMS = socksd
 
 socksd_SOURCES = \
