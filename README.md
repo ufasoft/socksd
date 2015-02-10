@@ -1,2 +1,2 @@
-# socks
+# socksd
 Multi-threaded SOCKS proxy

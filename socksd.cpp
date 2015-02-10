@@ -145,7 +145,6 @@ public:
 	void Execute() override	{
 #if UCFG_USE_POSIX
 		signal(SIGHUP, SIG_IGN);
-		signal(SIGPIPE, SIG_IGN);
 #endif
 
 		for (int arg; (arg = getopt(Argc, Argv, "hl:p:")) != EOF;) {

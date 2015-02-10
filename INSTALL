@@ -3,7 +3,7 @@ REQUIREMENTS
 libext library:
 	git clone https://github.com/ufasoft/libext --recursive
 	cd libext
-	autoreconf && ./configure && make && sudo make install
+	autoreconf -i && ./configure && make && sudo make install
 
 
 
