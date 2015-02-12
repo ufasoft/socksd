@@ -9,7 +9,7 @@ AC_LANG([C++])
 
 AC_PATH_PROG([COMPILER], [$CXX])
 if ! test -x "${COMPILER}"; then
-	AC_MSG_ERROR([No C++ compiler found. Please install a C++ compiler, Clang++ preferred.])
+	AC_MSG_ERROR([No C++ compiler found. Please install a C++ compiler: clang++ or g++.])
 fi
 
 
@@ -18,8 +18,6 @@ AC_TYPE_SIZE_T
 AC_TYPE_INT64_T
 AC_TYPE_UINT64_T
 
-
-CXXFLAGS="$CXXFLAGS -Wno-invalid-offsetof"
 
 AX_CHECK_COMPILE_FLAG([-std=c++1y], [CXXFLAGS="$CXXFLAGS -std=c++1y"], [CXXFLAGS="$CXXFLAGS -std=c++0x"])
 
@@ -34,6 +32,8 @@ if test "x$CLANG" = "xyes"; then
 	CXXFLAGS="$CXXFLAGS -stdlib=libc++"
 	AC_CHECK_LIB([c++abi], [__cxa_bad_cast],  	, [AC_MSG_ERROR([required libc++abi not found])					])
 	have_regex=yes
+else
+	CXXFLAGS="$CXXFLAGS -Wno-invalid-offsetof"
 fi
 
 if ! test "x$have_regex" = "xyes"; then
@@ -44,6 +44,7 @@ AM_CONDITIONAL(HAVE_REGEX, [test "x$have_regex" = "xyes"])
 
 
 AC_CHECK_LIB([pthread], [pthread_create],	[CXXFLAGS="$CXXFLAGS -pthread"]	, [AC_MSG_ERROR([Library libpthread not found])					])
+AC_CHECK_FUNCS([pthread_setname_np])
 AC_SEARCH_LIBS([iconv],  [iconv], []										, [AC_MSG_ERROR([Unable to find the iconv() function])			])
 
 
