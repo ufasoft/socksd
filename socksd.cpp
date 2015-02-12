@@ -9,13 +9,16 @@ CUsingSockets g_usingSockets;
 class CSocksThread : public SocketThread, public CSocketLooper {
 	typedef SocketThread base;
 public:
-	bool m_bFinal;
 	IPEndPoint m_epSrc;
 	Socket m_sockS, m_sockD;
 
 	CSocksThread(thread_group *ownRef)
 		: SocketThread(ownRef)
 	{
+	}
+
+	~CSocksThread() {		//!!!D
+		TRC(3, "");
 	}
 
 	void Stop() override {
@@ -86,13 +89,14 @@ protected:
 	void Execute() override {
 		Name = "CListenThread";
 		try {
+			DBG_LOCAL_IGNORE_CONDITION(errc::interrupted);
+
 			while (!m_bStop) {
 				IPEndPoint epFrom;
 				Socket sock;
 
-				DBG_LOCAL_IGNORE_CONDITION(errc::interrupted);
 				if (m_sockListen.Accept(sock, epFrom)) {
-					TRC(2, "Accepted connect from " << epFrom);
+					TRC(4, "Accepted connect from " << epFrom);
 
 					if (m_bStop)
 						break;
@@ -104,7 +108,6 @@ protected:
 				}
 			}
 		} catch (RCExc) {
-
 		}
 	}
 };
