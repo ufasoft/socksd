@@ -6,6 +6,12 @@ using namespace Ext::Inet;
 
 CUsingSockets g_usingSockets;
 
+#ifdef _DEBUG
+
+atomic<int> g_aThreads;
+
+#endif
+
 class CSocksThread : public SocketThread, public CSocketLooper {
 	typedef SocketThread base;
 public:
@@ -15,11 +21,17 @@ public:
 	CSocksThread(thread_group *ownRef)
 		: SocketThread(ownRef)
 	{
-		TRC(3, "");
+#ifdef _DEBUG
+		++g_aThreads;
+		if (g_aThreads.load() > 10 && !(g_aThreads.load() % 10))
+			TRC(1, "g_aThreads = " << g_aThreads);
+#endif
 	}
 
 	~CSocksThread() {		//!!!D
-		TRC(3, "");
+#ifdef _DEBUG
+		--g_aThreads;
+#endif
 	}
 
 	void Stop() override {
