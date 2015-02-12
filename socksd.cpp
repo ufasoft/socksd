@@ -15,6 +15,7 @@ public:
 	CSocksThread(thread_group *ownRef)
 		: SocketThread(ownRef)
 	{
+		TRC(3, "");
 	}
 
 	~CSocksThread() {		//!!!D
