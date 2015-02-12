@@ -23,7 +23,7 @@ public:
 	{
 #ifdef _DEBUG
 		++g_aThreads;
-		if (g_aThreads.load() > 10 && !(g_aThreads.load() % 10))
+		if (g_aThreads.load() > 9 && !(g_aThreads.load() % 10))
 			TRC(1, "g_aThreads = " << g_aThreads);
 #endif
 	}
@@ -31,6 +31,8 @@ public:
 	~CSocksThread() {		//!!!D
 #ifdef _DEBUG
 		--g_aThreads;
+		if (g_aThreads.load() > 9 && !(g_aThreads.load() % 10))
+			TRC(1, "g_aThreads = " << g_aThreads);
 #endif
 	}
 
@@ -57,9 +59,10 @@ protected:
 			
 			IPEndPoint epResult;
 			try {	
+				DBG_LOCAL_IGNORE_CONDITION(errc::timed_out);
 
 				switch (target.Typ) {
-				case QueryType::Connect:					
+				case QueryType::Connect:
 					m_sockD.Connect(target.Ep);
 					epResult = m_sockD.RemoteEndPoint;
 					break;
