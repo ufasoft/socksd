@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 using namespace std;
 
@@ -6,39 +11,15 @@ using namespace Ext::Inet;
 
 CUsingSockets g_usingSockets;
 
-#ifdef _DEBUG
-
-atomic<int> g_aThreads;
-
-#endif
 
 class CSocksThread : public SocketThread, public CSocketLooper {
 	typedef SocketThread base;
 public:
-	IPEndPoint m_epSrc;
-	Socket m_sockS, m_sockD;
-
-	CSocksThread(thread_group *ownRef)
-		: SocketThread(ownRef)
-	{
-#ifdef _DEBUG
-		++g_aThreads;
-		if (g_aThreads.load() > 9 && !(g_aThreads.load() % 10))
-			TRC(1, "g_aThreads = " << g_aThreads);
-#endif
-	}
-
-	~CSocksThread() {		//!!!D
-#ifdef _DEBUG
-		--g_aThreads;
-		if (g_aThreads.load() > 9 && !(g_aThreads.load() % 10))
-			TRC(1, "g_aThreads = " << g_aThreads);
-#endif
-	}
+	Socket m_sock, m_sockD;
 
 	void Stop() override {
 		base::Stop();
-		m_sockS.Close();//!!!
+		m_sock.Close();//!!!
 		m_sockD.Close();
 	}
 protected:
@@ -46,7 +27,7 @@ protected:
 
 	void Execute() override {
 		try {
-			NetworkStream stm(m_sockS);
+			NetworkStream stm(m_sock);
 			byte ver;
 			stm.ReadBuffer(&ver, 1);
 			switch (ver) {
@@ -55,6 +36,9 @@ protected:
 			default: m_relay = CProxyRelay::CreateHttpRelay();
 			}
 			m_relay->m_pStm = &stm;
+
+			DBG_LOCAL_IGNORE_CONDITION(errc::connection_aborted);
+
 			CProxyQuery target = m_relay->GetQuery(ver);
 			
 			IPEndPoint epResult;
@@ -75,54 +59,7 @@ protected:
 			}
 			m_relay->SendReply(epResult);
 			NoSignal = true;
-			Loop(m_sockS, m_sockD);
-		} catch (RCExc) {
-		}
-	}
-};
-
-class ListenerThread : public SocketThread {
-	typedef SocketThread base;
-public:
-	Socket m_sockListen;
-	SocketKeeper m_socketKeeper;
-	IPEndPoint m_ep;
-
-	ListenerThread(thread_group& tg, const IPEndPoint& ep)
-		: base(&tg)
-		, m_ep(ep)
-		, m_sockListen(ep.Address.AddressFamily, SocketType::Stream, ProtocolType::Tcp)
-		, m_socketKeeper(_self, m_sockListen)
-	{
-	}
-protected:
-	void BeforeStart() override {
-		m_sockListen.ReuseAddress = true;
-		m_sockListen.Bind(m_ep);
-		m_sockListen.Listen();
-	}
-
-	void Execute() override {
-		Name = "CListenThread";
-		try {
-			DBG_LOCAL_IGNORE_CONDITION(errc::interrupted);
-
-			while (!m_bStop) {
-				IPEndPoint epFrom;
-				Socket sock;
-
-				if (m_sockListen.Accept(sock, epFrom)) {
-					TRC(4, "Accepted connect from " << epFrom);
-
-					if (m_bStop)
-						break;
-
-					ptr<CSocksThread> t = new CSocksThread(&GetThreadRef());
-					t->m_sockS = move(sock);
-					t->m_epSrc = epFrom;
-					t->Start();
-				}
-			}
+			Loop(m_sock, m_sockD);
 		} catch (RCExc) {
 		}
 	}
@@ -135,7 +72,7 @@ public:
 	IPAddress Ip;
 	CBool ListenGlobalIP;
 	thread_group m_tg;
-	unordered_map<IPAddress, ptr<ListenerThread>> m_ipToListener;
+	unordered_set<IPAddress> m_ips;
 	AutoResetEvent m_evStop;
 	volatile bool m_bStopListen;
 
@@ -146,9 +83,10 @@ public:
 	}
 
 	void StartListen(const IPAddress& ip) {
-		TRC(1, "Listening on " << IPEndPoint(ip, Port));
-
-		m_ipToListener.insert(make_pair(ip, new ListenerThread(m_tg, IPEndPoint(ip, Port)))).first->second->Start();
+		ptr<ListenerThread<CSocksThread>> p = new ListenerThread<CSocksThread>(m_tg, IPEndPoint(ip, Port));
+		p->m_sockListen.ReuseAddress = true;
+		m_ips.insert(ip);
+		p->Start();
 	}
 
  	void PrintUsage() {
@@ -184,7 +122,7 @@ public:
 			if (Ip.IsEmpty()) {
 				vector<IPAddress> ips = IPAddrInfo().GetIPAddresses();
 				for (auto& ip : ips) {
-					if (!m_ipToListener.count(ip) && (ListenGlobalIP || !ip.IsGlobal()))
+					if (!m_ips.count(ip) && (ListenGlobalIP || !ip.IsGlobal()))
 						StartListen(ip);
 				}
 			}
