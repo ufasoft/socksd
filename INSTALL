@@ -1,18 +1,18 @@
 REQUIREMENTS
 
 libext library:
-	git clone https://github.com/ufasoft/libext --recursive
-	cd libext
-	autoreconf -i && ./configure && make && sudo make install
+    git clone https://github.com/ufasoft/libext --recursive
+    cd libext
+    autoreconf -i && ./configure && make && sudo make install
 
 
 
 HOW TO BUILD
 
-	autoreconf && ./configure && make && sudo make install
+    autoreconf -i && ./configure && make && sudo make install
 
 modify systemd unit (sysvinit script) to call the daemon with listening IP/port options:
-	/usr/local/bin/socksd -l 192.168.0.1 -p 1080
+    /usr/local/bin/socksd -l 192.168.0.1 -p 1080
 
 
 

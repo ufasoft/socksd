@@ -6,7 +6,7 @@ m4_include([m4/common.m4])
 AC_CONFIG_SRCDIR([socksd.cpp])
 
 
-AC_CHECK_LIB([ext], [AfxTestEHsStub],		, [AC_MSG_ERROR([Library libext not found, install it from https://github./com/ufasoft/libext])])
+AC_CHECK_LIB([ext], [AfxTestEHsStub],       , [AC_MSG_ERROR([Library libext not found, install it from https://github.com/ufasoft/libext])])
 
 
 AC_OUTPUT(Makefile)

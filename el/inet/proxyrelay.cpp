@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2013-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #include <el/ext.h>
 
 #include "proxy.h"
@@ -20,7 +25,7 @@ class CSocks4Relay : public CProxyRelay {
 public:
 	CProxyQuery GetQuery(char beg) override {
 		CProxyQuery pq;
-		byte buf[7];
+		uint8_t buf[7];
 		m_pStm->ReadBuffer(buf,7);
 		uint16_t port = ntohs(*(uint16_t*)(buf+1));
 		uint32_t host = *(uint32_t*)(buf+3);
@@ -29,13 +34,13 @@ public:
 		switch (*buf) {
 		case 1: pq.Typ = QueryType::Connect; break;
 		case 2: pq.Typ = QueryType::Bind;    break;
-		default: Throw(E_SOCKS_IncorrectProtocol);
+		default: Throw(ExtErr::SOCKS_IncorrectProtocol);
 		}
-		return pq; 
+		return pq;
 	}
 
 	void SendReply(const IPEndPoint& hp, const error_code& ec) override {
-		byte ar[8] = {0};
+		uint8_t ar[8] = {0};
 		if (ec)
 			ar[1] = 91;
 		else {
@@ -58,7 +63,7 @@ public:
 			break;
 		case 4:
 			{
-				byte har[16];
+				uint8_t har[16];
 				rd.Read(har, sizeof(har));
 				header.EndPoint.Address = IPAddress(ConstBuf(har, 16));
 			}
@@ -67,14 +72,14 @@ public:
 			break;
 		case 3:
 			{
-				byte len = rd.ReadByte();
-				byte *hp = (byte*)alloca(len);
+				uint8_t len = rd.ReadByte();
+				uint8_t *hp = (uint8_t*)alloca(len);
 				rd.Read(hp, len);
 				header.EndPoint.Address = IPAddress::Parse(String((char*)hp, len));
 			}
 			break;
 		default:
-			Throw(E_SOCKS_IncorrectProtocol);
+			Throw(ExtErr::SOCKS_IncorrectProtocol);
 		}
 		header.EndPoint.Port = ntohs(rd.ReadUInt16());
 	}
@@ -82,24 +87,24 @@ public:
 	CProxyQuery GetQuery(char beg) override {
 		Stream& stm = *m_pStm;
 		BinaryReader rd(stm);
-		byte nMethods = rd.ReadByte();
-		byte *pm = (byte*)alloca(nMethods);
+		uint8_t nMethods = rd.ReadByte();
+		uint8_t *pm = (uint8_t*)alloca(nMethods);
 		rd.Read(pm, nMethods);
 		if (nMethods) {
 			for (int i=0; i<nMethods; i++) {
 				if (!pm[i]) {
-					byte ar[] = {5,0};
+					uint8_t ar[] = {5,0};
 					stm.WriteBuffer(ar, 2);
 					goto out;
 				}
 			}
-			Throw(E_PROXY_MethodNotSupported);
+			Throw(ExtErr::PROXY_MethodNotSupported);
 		}
 out:
-		byte ar[4];
+		uint8_t ar[4];
 		rd.Read(ar, 4);
 		if (ar[0] != 5)
-			Throw(E_SOCKS_InvalidVersion);
+			Throw(ExtErr::SOCKS_InvalidVersion);
 		CSocks5Header header;
 		header.Cmd = ar[1];
 		header.AddrType = ar[3];
@@ -108,7 +113,7 @@ out:
 	}
 
 	void SendReply(const IPEndPoint& hp, const error_code& ec) override {
-		byte ar[264] = { 5, 0, 0, 1 };
+		uint8_t ar[264] = { 5, 0, 0, 1 };
 		int len = 10;
 		if (ec) {
 			if (ec == errc::permission_denied)
@@ -129,7 +134,7 @@ out:
 				ar[1] = 1;
 		} else {
 			IPAddress ip = hp.Address;
-			byte *p = &ar[4];
+			uint8_t *p = &ar[4];
 			switch ((int)ip.get_AddressFamily()) {
 			case AF_INET:
 				ar[3] = 1;
@@ -148,7 +153,7 @@ out:
 					size_t slen = strlen(hostname);
 					if (slen > 255)
 						Throw(E_FAIL);
-					*p++ = (byte)slen;
+					*p++ = (uint8_t)slen;
 					memcpy(exchange(p, p+slen), hostname, slen);
 				}
 				break;
@@ -168,10 +173,10 @@ protected:
 		case 1: pq.Typ = QueryType::Connect; break;
 		case 2: pq.Typ = QueryType::Bind; break;
 		case 3: pq.Typ = QueryType::Udp; break;
-		default: Throw(E_SOCKS_IncorrectProtocol);
+		default: Throw(ExtErr::SOCKS_IncorrectProtocol);
 		}
 		TRC(3, "SOCKS5 req " << (int)header.Cmd  << " for " << pq.Ep );
-		return pq; 
+		return pq;
 	}
 };
 
@@ -196,7 +201,7 @@ public:
 
 		cmatch m;
 		if (!regex_search(line.c_str(), m, s_reRequest))
-			Throw(E_PROXY_InvalidHttpRequest);
+			Throw(ExtErr::PROXY_InvalidHttpRequest);
 		String method = m[1];
 		method.MakeUpper();
 		if (m_bConnect = (method == "CONNECT")) {
@@ -209,8 +214,9 @@ public:
 			pq.Ep = IPEndPoint(m[2], port);
 			String rest = m[4];
 			method += " ";
-			m_qs.WriteBuffer((const char*)method, method.length()); //!!!
-			m_qs.WriteBuffer((const char*)rest, rest.length());
+			m_qs.reset(new MemoryStream);
+			m_qs->WriteBuffer((const char*)method, method.length()); //!!!
+			m_qs->WriteBuffer((const char*)rest, rest.length());
 		}
 		/*!!!
 		String oline(line);
@@ -229,7 +235,7 @@ public:
 		pq.m_hp = IPEndPoint(line.Left(i));
 		}
 		else
-		{   
+		{
 		const char *p = oline,
 		*q = strstr(p,"http://"),
 		*b = q+7,
@@ -244,7 +250,7 @@ public:
 		m_qs.WriteBuffer(p,q-p);
 		m_qs.WriteBuffer(e,strlen(p)-(e-p));
 		}*/
-		return pq; 
+		return pq;
 	}
 
 	void SendReply(const IPEndPoint& hp, const error_code& ec) override {
@@ -257,7 +263,7 @@ public:
 	}
 };
 
-CProxyRelay *CProxyRelay::CreateSocks4Relay() { 
+CProxyRelay *CProxyRelay::CreateSocks4Relay() {
 	return new CSocks4Relay;
 }
 
@@ -291,4 +297,3 @@ CProxyQuery TorSocks5Relay::OnCommand(CSocks5Header& header, Stream& stm) {
 }
 
 }} // Ext::Inet::
-

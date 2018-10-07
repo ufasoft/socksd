@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -28,7 +28,7 @@ protected:
 	void Execute() override {
 		try {
 			NetworkStream stm(m_sock);
-			byte ver;
+			uint8_t ver;
 			stm.ReadBuffer(&ver, 1);
 			switch (ver) {
 			case 4: m_relay = CProxyRelay::CreateSocks4Relay(); break;
@@ -40,9 +40,9 @@ protected:
 			DBG_LOCAL_IGNORE_CONDITION(errc::connection_aborted);
 
 			CProxyQuery target = m_relay->GetQuery(ver);
-			
+
 			IPEndPoint epResult;
-			try {	
+			try {
 				DBG_LOCAL_IGNORE_CONDITION(errc::timed_out);
 
 				switch (target.Typ) {
@@ -144,8 +144,3 @@ public:
 
 
 EXT_DEFINE_MAIN(theApp)
-
-
-
-
-
