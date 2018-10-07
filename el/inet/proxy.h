@@ -1,3 +1,8 @@
+/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+#                                                                                                                                     #
+# 		See LICENSE for licensing information                                                                                         #
+#####################################################################################################################################*/
+
 #pragma once
 
 #include <el/libext/ext-net.h>
@@ -7,7 +12,9 @@
 //!!!#include "ProxyMsg.h"
 
 namespace Ext {
-	namespace Inet {
+namespace Inet {
+
+using namespace Ext;
 
 const int NOTIFY_TRY_PERIOD = 600000;
 
@@ -45,13 +52,13 @@ inline ostream& operator<<(ostream& os, const CProxyQuery& pq) {
 #pragma pack(push,1)
 
 struct CSocks5Header {
-	byte Cmd;
-	byte AddrType;
+	uint8_t Cmd;
+	uint8_t AddrType;
 	IPEndPoint EndPoint;
 };
 
 struct SSocks5ReplyHeader {
-	byte m_ver,
+	uint8_t m_ver,
 		m_rep,
 		m_rsv,
 		m_atyp;
@@ -59,7 +66,7 @@ struct SSocks5ReplyHeader {
 
 struct UDP_REPLY {
 	uint16_t m_rsv;
-	byte m_frag,
+	uint8_t m_frag,
 		m_atype;
 	uint32_t m_host;
 	uint16_t m_port;
@@ -124,7 +131,7 @@ public:
 
 class CSocks5Proxy : public CProxyBase {
 public:
-	virtual IPEndPoint TcpBy(Stream& stm, const IPEndPoint& hp, byte cmd);
+	virtual IPEndPoint TcpBy(Stream& stm, const IPEndPoint& hp, uint8_t cmd);
 	void Authenticate(Stream& stm) override;
 	IPEndPoint Connect(Stream& stm, const CProxyQuery& q) override;
 };
@@ -137,7 +144,6 @@ public:
 
 IPEndPoint ReadSocks5Reply(Stream& stm);
 
-void LogMessage(RCString s);
 
 #ifndef NO_INTERNET
 
