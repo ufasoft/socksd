@@ -68,8 +68,6 @@ protected:
 class CSocksApp : public CConApp {
 	typedef CConApp base;
 public:
-	uint16_t Port;
-	IPAddress Ip;
 	CBool ListenGlobalIP;
 	thread_group m_tg;
 	unordered_set<IPAddress> m_ips;
@@ -79,11 +77,10 @@ public:
 	CSocksApp()
 		:	m_bStopListen(false)
  	{
-		Port = 1080;
 	}
 
-	void StartListen(const IPAddress& ip) {
-		ptr<ListenerThread<CSocksThread>> p = new ListenerThread<CSocksThread>(m_tg, IPEndPoint(ip, Port));
+	void StartListen(const IPAddress& ip, uint16_t port) {
+		ptr<ListenerThread<CSocksThread>> p = new ListenerThread<CSocksThread>(m_tg, IPEndPoint(ip, port));
 		p->m_sockListen.ReuseAddress = true;
 		m_ips.insert(ip);
 		p->Start();
@@ -92,7 +89,7 @@ public:
  	void PrintUsage() {
 		cout << "Usage: " << System.get_ExeFilePath().stem() << " {-l ip -p port}" << "\n";
 		cout << "  -p port       Listening port, by default 1080\n"
-			 << "  -l ip		Listening IP, by default non-global\n"
+			 << "  -l ip[,ip...] Bind IPs, by default non-global\n"
 			<< endl;
 	}
 
@@ -101,31 +98,38 @@ public:
 		signal(SIGHUP, SIG_IGN);
 #endif
 
+		vector<IPAddress> ips;
+		uint16_t port = 1080;
+
 		for (int arg; (arg = getopt(Argc, Argv, "hl:p:")) != EOF;) {
 			switch (arg) {
 			case 'h':
 				PrintUsage();
 				return;
 			case 'l':
-				Ip = IPAddress::Parse(optarg);
+				for (auto s : String(optarg).Split(","))
+					ips.push_back(IPAddress::Parse(s));
 				break;
 			case 'p':
-				Port = uint16_t(atoi(optarg));
+				port = uint16_t(atoi(optarg));
 				break;
 			}
 		}
 
-		if (!Ip.IsEmpty())
-			StartListen(Ip);
-		StartListen(IPAddress::Loopback);
+		for (auto& ip : ips)
+			StartListen(ip, port);
+		StartListen(IPAddress::Loopback, port);
+
 		while (!m_bStopListen) {
-			if (Ip.IsEmpty()) {
-				vector<IPAddress> ips = IPAddrInfo().GetIPAddresses();
-				for (auto& ip : ips) {
-					if (!m_ips.count(ip) && (ListenGlobalIP || !ip.IsGlobal()))
-						StartListen(ip);
-				}
-			}
+			vector<IPAddress> dynIps;
+ 			if (ips.empty()) {
+ 				dynIps = IPAddrInfo().GetIPAddresses();
+   				for (auto& ip : dynIps) {
+   					if (!m_ips.count(ip) && (ListenGlobalIP || !ip.IsGlobal()))
+						StartListen(ip, port);
+   				}
+   			}
+
 			m_evStop.lock(60000);
 		}
 		m_tg.interrupt_all();
@@ -141,6 +145,5 @@ public:
 	}
 
 } theApp;
-
 
 EXT_DEFINE_MAIN(theApp)
