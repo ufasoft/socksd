@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2020 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -10,20 +10,21 @@
 namespace Ext {
 	namespace Inet {
 
-class CProxyRelay : public Object {
+class CProxyRelay : public NonInterlockedObject {
 public:
 	Stream *m_pStm;
 	unique_ptr<MemoryStream> m_qs;
 
 	virtual ~CProxyRelay() {}
 	virtual CProxyQuery GetQuery(char beg) { return CProxyQuery(); }
-	virtual void SendReply(const IPEndPoint& hp, const error_code& ec = error_code()) {}
+	virtual void SendReply(const InternetEndPoint &ep, const error_code &ec = error_code()) {
+	}
 
 	void AfterConnect(Stream& ostm) {
 		if (m_qs) {
-			Blob blob = m_qs->Blob;
-			if (blob.Size != 0)
-				ostm.WriteBuffer(blob.constData(), blob.Size);
+			Span s = m_qs->AsSpan();
+			if (s.size() != 0)
+				ostm.Write(s);
 		}
 	}
 

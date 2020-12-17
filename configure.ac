@@ -1,4 +1,4 @@
-AC_INIT(socksd, 1.0, support@ufasoft.com,, http://github.com/ufasoft/socksd)
+AC_INIT(socksd, 1.1, support@ufasoft.com,, http://github.com/ufasoft/socksd)
 AC_CONFIG_MACRO_DIR([m4])
 m4_include([m4/common.m4])
 AC_PROG_CXX

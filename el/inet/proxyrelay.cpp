@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2020 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -28,9 +28,9 @@ public:
 		uint8_t buf[7];
 		m_pStm->ReadBuffer(buf,7);
 		uint16_t port = ntohs(*(uint16_t*)(buf+1));
-		uint32_t host = *(uint32_t*)(buf+3);
+		uint32_t host = *(uint32_t*)(buf + 3);
 		String userID = ReadSocks4String();
-		pq.Ep = host<256 ? IPEndPoint(ReadSocks4String(),port) : IPEndPoint(host, port);
+		pq.Ep = host < 256 ? (EndPoint*)new DnsEndPoint(ReadSocks4String(), port) : new IPEndPoint(host, port);
 		switch (*buf) {
 		case 1: pq.Typ = QueryType::Connect; break;
 		case 2: pq.Typ = QueryType::Bind;    break;
@@ -39,16 +39,17 @@ public:
 		return pq;
 	}
 
-	void SendReply(const IPEndPoint& hp, const error_code& ec) override {
+	void SendReply(const InternetEndPoint& ep, const error_code& ec) override {
 		uint8_t ar[8] = {0};
 		if (ec)
 			ar[1] = 91;
 		else {
 			ar[1] = 90;
-			*(uint16_t*)(ar+2) = htons(hp.Port);
-			*(uint32_t*)(ar+4) = htonl(hp.Address.GetIP());
+			*(uint16_t*)(ar + 2) = htons(ep.Port);
+			const IPEndPoint& ipEp = dynamic_cast<const IPEndPoint&>(ep);
+			*(uint32_t*)(ar + 4) = htonl(ipEp.Address.GetIP());
 		}
-		m_pStm->WriteBuffer(ar,sizeof ar);
+		m_pStm->WriteBuffer(ar, sizeof ar);
 	}
 };
 
@@ -58,14 +59,12 @@ public:
 	void ReadEndPoint(CSocks5Header& header, Stream& stm) {
 		BinaryReader rd(stm);
 		switch (header.AddrType) {
-		case 1:
-			header.EndPoint.Address = IPAddress(rd.ReadUInt32());
-			break;
+		case 1: header.EndPoint = new IPEndPoint(IPAddress(rd.ReadUInt32()), 0);
 		case 4:
 			{
 				uint8_t har[16];
 				rd.Read(har, sizeof(har));
-				header.EndPoint.Address = IPAddress(ConstBuf(har, 16));
+				header.EndPoint = new IPEndPoint(IPAddress(ConstBuf(har, 16)), 0);
 			}
 			break;
 		case 2:
@@ -75,13 +74,13 @@ public:
 				uint8_t len = rd.ReadByte();
 				uint8_t *hp = (uint8_t*)alloca(len);
 				rd.Read(hp, len);
-				header.EndPoint.Address = IPAddress::Parse(String((char*)hp, len));
+				header.EndPoint = new DnsEndPoint(String((char*)hp, len), 0);
 			}
 			break;
 		default:
 			Throw(ExtErr::SOCKS_IncorrectProtocol);
 		}
-		header.EndPoint.Port = ntohs(rd.ReadUInt16());
+		header.EndPoint->Port = ntohs(rd.ReadUInt16());
 	}
 
 	CProxyQuery GetQuery(char beg) override {
@@ -112,7 +111,7 @@ out:
 		return OnCommand(header, stm);
 	}
 
-	void SendReply(const IPEndPoint& hp, const error_code& ec) override {
+	void SendReply(const InternetEndPoint& hp, const error_code& ec) override {
 		uint8_t ar[264] = { 5, 0, 0, 1 };
 		int len = 10;
 		if (ec) {
@@ -133,32 +132,31 @@ out:
 			else
 				ar[1] = 1;
 		} else {
-			IPAddress ip = hp.Address;
-			uint8_t *p = &ar[4];
-			switch ((int)ip.get_AddressFamily()) {
-			case AF_INET:
-				ar[3] = 1;
-				*(uint32_t*)p = htonl(ip.GetIP());
-				p += 4;
-				break;
-			case AF_INET6:
-				ar[3] = 4;
-				memcpy(p, ip.GetAddressBytes().constData(), 16);
-				p += 16;
-				break;
-			case IPAddress::AF_DOMAIN_NAME:
-				{
-					ar[3] = 3;
-					const char *hostname = ip.m_domainname;
-					size_t slen = strlen(hostname);
-					if (slen > 255)
-						Throw(E_FAIL);
-					*p++ = (uint8_t)slen;
-					memcpy(exchange(p, p+slen), hostname, slen);
+			uint8_t* p = &ar[4];
+			if (const IPEndPoint* ipEp = dynamic_cast<const IPEndPoint*>(&hp)) {
+				IPAddress ip = ipEp->Address;
+				switch ((int)ip.get_AddressFamily()) {
+				case AF_INET:
+					ar[3] = 1;
+					*(uint32_t*)p = htonl(ip.GetIP());
+					p += 4;
+					break;
+				case AF_INET6:
+					ar[3] = 4;
+					memcpy(p, ip.GetAddressBytes().constData(), 16);
+					p += 16;
+					break;
 				}
-				break;
-			default:
-				Throw(E_NOTIMPL);
+			} else {
+				const DnsEndPoint& dnsEp = dynamic_cast<const DnsEndPoint&>(hp);
+				ar[3] = 3;
+				String host = dnsEp.Host;
+				const char* hostname = host;
+				size_t slen = strlen(hostname);
+				if (slen > 255)
+					Throw(E_FAIL);
+				*p++ = (uint8_t)slen;
+				memcpy(exchange(p, p + slen), hostname, slen);
 			}
 			*(uint16_t*)p = htons(hp.Port);
 			len = p + 2 - ar;
@@ -175,7 +173,7 @@ protected:
 		case 3: pq.Typ = QueryType::Udp; break;
 		default: Throw(ExtErr::SOCKS_IncorrectProtocol);
 		}
-		TRC(3, "SOCKS5 req " << (int)header.Cmd  << " for " << pq.Ep );
+		TRC(3, "SOCKS5 req " << (int)header.Cmd  << " for " << *pq.Ep );
 		return pq;
 	}
 };
@@ -188,6 +186,16 @@ protected:
 
 static regex s_reRequest("^(\\w+)\\s+(?:http://)?([-.\\w]+)(?::(\\d+))?(.*)", regex_constants::icase);
 
+static ptr<InternetEndPoint> ParseHost(RCString s) {
+	IPAddress ip;
+	ptr<InternetEndPoint> ep;
+	if (IPAddress::TryParse(s, ip))
+		ep = new IPEndPoint(ip, 0);
+	else
+		ep = new DnsEndPoint(s, 0);
+	return ep;
+}
+
 class CHttpRelay : public CProxyRelay {
 	bool m_bConnect;
 public:
@@ -196,28 +204,29 @@ public:
 		CProxyQuery pq;
 		pq.Typ = QueryType::Connect;
 		String line(beg);
-		ReadOneLineFromStream(stm,line);
-		line += "\r\n";
+		ReadOneLineFromStream(stm, line);
+		const char *strLine = line.c_str();
 
 		cmatch m;
-		if (!regex_search(line.c_str(), m, s_reRequest))
+		if (!regex_search(strLine, m, s_reRequest))
 			Throw(ExtErr::PROXY_InvalidHttpRequest);
 		String method = m[1];
 		method.MakeUpper();
+		ptr<InternetEndPoint> ep = ParseHost(m[2]);
+		uint16_t port = 80;
 		if (m_bConnect = (method == "CONNECT")) {
+			port = (uint16_t)atoi(String(m[3]));
 			ReadHttpHeader(stm);
-			pq.Ep = IPEndPoint(m[2], (uint16_t)atoi(String(m[3])));
 		} else {
-			uint16_t port = 80;
 			if (String(m[3]) != "")
 				port = (uint16_t)atoi(String(m[3]));
-			pq.Ep = IPEndPoint(m[2], port);
-			String rest = m[4];
-			method += " ";
 			m_qs.reset(new MemoryStream);
-			m_qs->WriteBuffer((const char*)method, method.length()); //!!!
-			m_qs->WriteBuffer((const char*)rest, rest.length());
+			String reqLine = method + " " + String(m[4]) + "\r\n";
+			const char* strReqLine = reqLine.c_str();
+			m_qs->WriteBuffer(strReqLine, strlen(strReqLine));
 		}
+		ep->Port = port;
+		pq.Ep = ep;
 		/*!!!
 		String oline(line);
 		int i = line.FindOneOf(" \t");
@@ -253,7 +262,7 @@ public:
 		return pq;
 	}
 
-	void SendReply(const IPEndPoint& hp, const error_code& ec) override {
+	void SendReply(const InternetEndPoint& ep, const error_code& ec) override {
 		if (ec || m_bConnect) {
 			ostringstream os;
 			os << "HTTP/1.0 " << (ec ? 400 : 200) << "\r\n\r\n";
