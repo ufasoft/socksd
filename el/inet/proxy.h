@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2014-2015 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2014-2019 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -6,7 +6,7 @@
 #pragma once
 
 #include <el/libext/ext-net.h>
-#include <el/libext/ext-http.h>
+#include <el/inet/http.h>
 
 
 //!!!#include "ProxyMsg.h"
@@ -26,16 +26,16 @@ extern bool g_bNoSendBuffers;
 const int DEFAULT_RECEIVE_TIMEOUT = 4;
 
 ENUM_CLASS(QueryType) {
-	Connect,
-	Bind,
-	Udp,
-	Resolve,
-	RevResolve,
+	Connect
+	, Bind
+	, Udp
+	, Resolve
+	, RevResolve,
 } END_ENUM_CLASS(QueryType);
 
 struct CProxyQuery {
 	QueryType Typ;
-	IPEndPoint Ep;
+	ptr<EndPoint> Ep;
 };
 
 inline ostream& operator<<(ostream& os, const CProxyQuery& pq) {
@@ -46,7 +46,7 @@ inline ostream& operator<<(ostream& os, const CProxyQuery& pq) {
 	case QueryType::Resolve:		os << "QueryType::Resolve"; break;
 	case QueryType::RevResolve:		os << "QueryType::RevResolve"; break;
 	}
-	return os << " " << pq.Ep;
+	return os << " " << *pq.Ep;
 }
 
 #pragma pack(push,1)
@@ -54,7 +54,7 @@ inline ostream& operator<<(ostream& os, const CProxyQuery& pq) {
 struct CSocks5Header {
 	uint8_t Cmd;
 	uint8_t AddrType;
-	IPEndPoint EndPoint;
+	ptr<InternetEndPoint> EndPoint;
 };
 
 struct SSocks5ReplyHeader {
@@ -76,6 +76,10 @@ struct UDP_REPLY {
 
 class CProxySocket : public Socket {
 	typedef Socket base;
+private:
+	IPEndPoint m_remoteHostPort;
+protected:
+	IPEndPoint m_ep;
 public:
 	Socket m_sock;
 	bool m_bLingerZero;
@@ -85,27 +89,23 @@ public:
 	{}
 
 	CProxySocket(AddressFamily af, SocketType sockType, ProtocolType protoType)
-		:	base(af, sockType, protoType)
-		,	m_bLingerZero(false)
+		: base(af, sockType, protoType)
+		, m_bLingerZero(false)
 	{}
 
 	void AssociateUDP();
-	void SendTo(const ConstBuf& cbuf, const IPEndPoint& ep) override;
+	void SendTo(RCSpan cbuf, const IPEndPoint& ep) override;
 	Blob ReceiveUDP(IPEndPoint& hp);
 	static DWORD GetTimeout();
 	static DWORD GetType();
 	IPEndPoint GetRemoteHostPort();
-protected:
-	IPEndPoint m_ep;
 
 	static void ConnectToProxy(Stream& stm);
-	bool ConnectHelper(const IPEndPoint& hp) override;
-private:
-	IPEndPoint m_remoteHostPort;
+	bool ConnectHelper(const EndPoint& ep) override;
 };
 
 
-class CProxyBase : public Object {
+class CProxyBase : public NonInterlockedObject {
 public:
 	enum EStage {
 		STAGE_CONNECTED,
@@ -121,7 +121,7 @@ public:
 	virtual ~CProxyBase() {};
 	virtual void Authenticate(Stream& stm) {}
 	virtual IPEndPoint Connect(Stream& stm, const CProxyQuery& q) = 0;
-	void ConnectWithResolving(Stream& stm, const IPEndPoint& hp);
+	void ConnectWithResolving(Stream& stm, const EndPoint& ep);
 };
 
 class CSocks4Proxy : public CProxyBase {
@@ -131,7 +131,7 @@ public:
 
 class CSocks5Proxy : public CProxyBase {
 public:
-	virtual IPEndPoint TcpBy(Stream& stm, const IPEndPoint& hp, uint8_t cmd);
+	virtual IPEndPoint TcpBy(Stream& stm, const EndPoint& ep, uint8_t cmd);
 	void Authenticate(Stream& stm) override;
 	IPEndPoint Connect(Stream& stm, const CProxyQuery& q) override;
 };
@@ -173,13 +173,6 @@ public:
 };
 
 class CSiteNotifierThreader : public Thread {
-protected:
-	void Stop() {
-		Thread::Stop();
-		m_sess.Close();
-	}
-
-	void Execute();
 public:
 	CSiteNotifier& m_siteNotifier;
 	CProxyInternetSession m_sess;
@@ -189,6 +182,13 @@ public:
 		, m_siteNotifier(siteNotifier)
 	{
 	}
+protected:
+	void Stop() {
+		Thread::Stop();
+		m_sess.Close();
+	}
+
+	void Execute();
 };
 
 bool ResolveLocally();
