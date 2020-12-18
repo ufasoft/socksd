@@ -1,4 +1,4 @@
-/*######   Copyright (c) 2013-2018 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
+/*######   Copyright (c) 2013-2020 Ufasoft  http://ufasoft.com  mailto:support@ufasoft.com,  Sergey Pavlov  mailto:dev@ufasoft.com ####
 #                                                                                                                                     #
 # 		See LICENSE for licensing information                                                                                         #
 #####################################################################################################################################*/
@@ -47,7 +47,7 @@ protected:
 
 				switch (target.Typ) {
 				case QueryType::Connect:
-					m_sockD.Connect(target.Ep);
+					m_sockD.Connect(*target.Ep);
 					epResult = m_sockD.RemoteEndPoint;
 					break;
 				default:
@@ -59,6 +59,10 @@ protected:
 			}
 			m_relay->SendReply(epResult);
 			NoSignal = true;
+			{
+				NetworkStream targetStream(m_sockD);
+				m_relay->AfterConnect(targetStream);
+			}
 			Loop(m_sock, m_sockD);
 		} catch (RCExc) {
 		}
