@@ -59,7 +59,9 @@ public:
 	void ReadEndPoint(CSocks5Header& header, Stream& stm) {
 		BinaryReader rd(stm);
 		switch (header.AddrType) {
-		case 1: header.EndPoint = new IPEndPoint(IPAddress(rd.ReadUInt32()), 0);
+		case 1:
+			header.EndPoint = new IPEndPoint(IPAddress(rd.ReadUInt32()), 0);
+			break;
 		case 4:
 			{
 				uint8_t har[16];
@@ -90,9 +92,9 @@ public:
 		uint8_t *pm = (uint8_t*)alloca(nMethods);
 		rd.Read(pm, nMethods);
 		if (nMethods) {
-			for (int i=0; i<nMethods; i++) {
+			for (int i = 0; i < nMethods; i++) {
 				if (!pm[i]) {
-					uint8_t ar[] = {5,0};
+					uint8_t ar[] = {5, 0};
 					stm.WriteBuffer(ar, 2);
 					goto out;
 				}
